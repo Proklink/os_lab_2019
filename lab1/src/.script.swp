@@ -4,7 +4,7 @@ echo "current path: "
 pwd
 
 echo "current date: "
-date
+TZ='Europe/Moscow' date
 
 echo "PATH: "
 echo $PATH
