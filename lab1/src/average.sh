@@ -9,6 +9,7 @@ sum=$(($sum + $word))
 count=$(( $count + 1 ))
 done
 
+
 sr_arf=0
 let "sr_arf = sum / count"
 echo "среднее арифметическое $sr_arf" 
