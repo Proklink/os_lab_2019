@@ -15,6 +15,8 @@
 #include "find_min_max.h"
 #include "utils.h"
 
+
+
 int main(int argc, char **argv) {
   int seed = -1;
   int array_size = -1;
@@ -42,16 +44,31 @@ int main(int argc, char **argv) {
             seed = atoi(optarg);
             // your code here
             // error handling
+            if(seed < 0)
+                {
+                    printf("seed nust be a nonnegative");
+                    return 1;
+                }
             break;
           case 1:
             array_size = atoi(optarg);
             // your code here
             // error handling
+            if(array_size < 0)
+                {
+                    printf("array_size nust be a nonnegative");
+                    return 1;
+                }
             break;
           case 2:
             pnum = atoi(optarg);
             // your code here
             // error handling
+             if(pnum < 0)
+                {
+                    printf("pnum nust be a nonnegative");
+                    return 1;
+                }
             break;
           case 3:
             with_files = true;
@@ -86,25 +103,67 @@ int main(int argc, char **argv) {
 
   int *array = malloc(sizeof(int) * array_size);
   GenerateArray(array, array_size, seed);
+  for(int i=0;i<array_size;i++)
+    printf("%d ",array[i]);
   int active_child_processes = 0;
 
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
+   int p[2];
+   int range = (array_size)/pnum;
+   int passed_cells = 0;
+   pid_t* proc = (pid_t*)calloc(pnum,sizeof(pid_t));
+
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
+
     if (child_pid >= 0) {
+
+        struct MinMax temp;
       // successful fork
+      printf("\n%d", getpid());
       active_child_processes += 1;
+
       if (child_pid == 0) {
         // child process
+        proc[i] = getpid();
 
         // parallel somehow
+        if (i == pnum-1){
+            temp = GetMinMax(array, passed_cells, array_size );
+            printf("\niteration - %d:min: %d, max: %d", i,temp.min,temp.max);
+        }
+        else
+            {
+                temp = GetMinMax(array, passed_cells, passed_cells + range );
+                passed_cells+=range;
+                printf("\niteration - %d:min: %d, max: %d", i,temp.min,temp.max);
+            }
 
         if (with_files) {
           // use files here
+            FILE* f;
+            if((f = fopen("Pipe","a"))==NULL)
+                {
+                    printf("Error openning file\n");
+                    return 1;
+                }
+            fprintf(f, "%d",temp.min);
+            fprintf(f, "%d",temp.max);
+            fclose(f);
         } else {
           // use pipe here
+          if(pipe(p) < 0)
+          {
+              printf("Pipe failed!\n");
+              return 1;
+          }
+          else 
+          {
+              close(p[0]); //close read end
+              write(p[1],&temp,sizeof(temp));
+          }
         }
         return 0;
       }
@@ -115,29 +174,44 @@ int main(int argc, char **argv) {
     }
   }
 
+
   while (active_child_processes > 0) {
     // your code here
-
+        if(getpid()==proc[active_child_processes])
+        exit(0);
     active_child_processes -= 1;
   }
 
   struct MinMax min_max;
   min_max.min = INT_MAX;
   min_max.max = INT_MIN;
+  
 
+    FILE* f;
+    if((f = fopen("Pipe","a"))==NULL)
+    {
+        printf("Error openning file\n");
+        return 1;
+    }
   for (int i = 0; i < pnum; i++) {
     int min = INT_MAX;
     int max = INT_MIN;
 
     if (with_files) {
       // read from files
+            fscanf(f, "%d",&min_max.min);
+            fscanf(f, "%d",&min_max.max);
+            
     } else {
       // read from pipes
+      close(p[1]);
+      read(p[0],&min_max,sizeof(min_max));
     }
 
     if (min < min_max.min) min_max.min = min;
     if (max > min_max.max) min_max.max = max;
   }
+    fclose(f);
 
   struct timeval finish_time;
   gettimeofday(&finish_time, NULL);
@@ -146,7 +220,7 @@ int main(int argc, char **argv) {
   elapsed_time += (finish_time.tv_usec - start_time.tv_usec) / 1000.0;
 
   free(array);
-
+    free(proc);
   printf("Min: %d\n", min_max.min);
   printf("Max: %d\n", min_max.max);
   printf("Elapsed time: %fms\n", elapsed_time);
