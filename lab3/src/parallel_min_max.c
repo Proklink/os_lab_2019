@@ -15,8 +15,6 @@
 #include "find_min_max.h"
 #include "utils.h"
 
-
-
 int main(int argc, char **argv) {
   int seed = -1;
   int array_size = -1;
@@ -44,31 +42,16 @@ int main(int argc, char **argv) {
             seed = atoi(optarg);
             // your code here
             // error handling
-            if(seed < 0)
-                {
-                    printf("seed nust be a nonnegative");
-                    return 1;
-                }
             break;
           case 1:
             array_size = atoi(optarg);
             // your code here
             // error handling
-            if(array_size < 0)
-                {
-                    printf("array_size nust be a nonnegative");
-                    return 1;
-                }
             break;
           case 2:
             pnum = atoi(optarg);
             // your code here
             // error handling
-             if(pnum < 0)
-                {
-                    printf("pnum nust be a nonnegative");
-                    return 1;
-                }
             break;
           case 3:
             with_files = true;
@@ -101,70 +84,61 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-
   int *array = malloc(sizeof(int) * array_size);
   GenerateArray(array, array_size, seed);
   int active_child_processes = 0;
   
-  printf("(%d): \n ",getpid());
-   for (int i = 0; i < array_size; i++) {printf("%d ",array[i]);}
+  for(int i=0;i<array_size;i++)
+  {
+      printf("\n%d ",getpid());
+      printf("%d ", array[i]);
+  }
 
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
-   int p[2];
-   int range = (array_size)/pnum;
+    int* p = (int*)calloc(2,sizeof(int));
+    if(with_files)
+    {}
+    else
+    {
+        if(pipe(p)<0)
+            {   printf("\npipe is failed");
+                return 1;
+            }
+    }
 
+    int range = array_size/pnum;
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
-
     if (child_pid >= 0) {
-
       // successful fork
-      
       active_child_processes += 1;
-
       if (child_pid == 0) {
+          struct MinMax temp;
+          printf("\niteration: %d, (%d) appeared, parent: %d", i, getpid(), getppid());
         // child process
-        struct MinMax temp;
-
-        printf("\nI (%d) appeared! My parent: %d, i: %d",getpid(),getppid(), i);
-        // parallel somehow
-        if (i == pnum-1){
-            temp = GetMinMax(array, i*range, array_size );
-            printf("\niteration - %d:min: %d, max: %d", i,temp.min,temp.max);
+        if (i != pnum-1){
+            temp = GetMinMax(array, i*range, (i+1)*range - 1);
+            printf("\nMin %d, Max %d",temp.min,temp.max);
         }
-        else
-            {
-                temp = GetMinMax(array, i*range, (i+1)*range-1);
-                printf("\niteration - %d:min: %d, max: %d", i,temp.min,temp.max);
-            }
+        else{
+            temp = GetMinMax(array, i*range, array_size-1);
+            printf("\nMin %d, Max %d",temp.min,temp.max);
+        }
+        // parallel somehow
 
         if (with_files) {
           // use files here
-            FILE* f;
-            if((f = fopen("Pipe","a"))==NULL)
-                {
-                    printf("Error openning file\n");
-                    return 1;
-                }
-            fprintf(f, "%d",temp.min);
-            fprintf(f, "%d",temp.max);
-            fclose(f);
         } else {
           // use pipe here
-          if(pipe(p) < 0)
-          {
-              printf("Pipe failed!\n");
-              return 1;
-          }
-          else 
-          {
-              printf("pipe is working");
-              close(p[0]); //close read end
-              write(p[1],&temp,sizeof(temp));
-          }
+            printf("\npipe is working");
+            close(p[0]); //close read end
+            write(p[1],&temp.max,sizeof(int));
+            write(p[1],&temp.min,sizeof(int));
+            close(p[1]);
         }
+        printf("\n(%d) is dying\n",getpid());
         return 0;
       }
 
@@ -173,7 +147,6 @@ int main(int argc, char **argv) {
       return 1;
     }
   }
-
 
   while (active_child_processes > 0) {
     // your code here
@@ -184,33 +157,26 @@ int main(int argc, char **argv) {
   struct MinMax min_max;
   min_max.min = INT_MAX;
   min_max.max = INT_MIN;
-  
 
-    FILE* f;
-    if((f = fopen("Pipe","a"))==NULL)
-    {
-        printf("Error openning file\n");
-        return 1;
-    }
   for (int i = 0; i < pnum; i++) {
     int min = INT_MAX;
     int max = INT_MIN;
 
     if (with_files) {
       // read from files
-            fscanf(f, "%d",&min_max.min);
-            fscanf(f, "%d",&min_max.max);
-            
     } else {
       // read from pipes
       close(p[1]);
-      read(p[0],&min_max,sizeof(min_max));
+      read(p[0],&max,sizeof(int));
+      read(p[0],&min,sizeof(int));
+        
+        close(p[0]);
+      
     }
 
     if (min < min_max.min) min_max.min = min;
     if (max > min_max.max) min_max.max = max;
   }
-    fclose(f);
 
   struct timeval finish_time;
   gettimeofday(&finish_time, NULL);
@@ -219,9 +185,9 @@ int main(int argc, char **argv) {
   elapsed_time += (finish_time.tv_usec - start_time.tv_usec) / 1000.0;
 
   free(array);
-
-  printf("\n(%d) is saying: Min: %d\n",getpid(), min_max.min);
-  printf("(%d) is saying: Max: %d\n",getpid(), min_max.max);
+    free(p);
+  printf("Min: %d\n", min_max.min);
+  printf("Max: %d\n", min_max.max);
   printf("Elapsed time: %fms\n", elapsed_time);
   fflush(NULL);
   return 0;
