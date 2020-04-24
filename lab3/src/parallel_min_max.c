@@ -101,43 +101,42 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+
   int *array = malloc(sizeof(int) * array_size);
   GenerateArray(array, array_size, seed);
-  for(int i=0;i<array_size;i++)
-    printf("%d ",array[i]);
   int active_child_processes = 0;
+  
+  printf("(%d): \n ",getpid());
+   for (int i = 0; i < array_size; i++) {printf("%d ",array[i]);}
 
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
    int p[2];
    int range = (array_size)/pnum;
-   int passed_cells = 0;
-   pid_t* proc = (pid_t*)calloc(pnum,sizeof(pid_t));
 
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
 
     if (child_pid >= 0) {
 
-        struct MinMax temp;
       // successful fork
-      printf("\n%d", getpid());
+      
       active_child_processes += 1;
 
       if (child_pid == 0) {
         // child process
-        proc[i] = getpid();
+        struct MinMax temp;
 
+        printf("\nI (%d) appeared! My parent: %d, i: %d",getpid(),getppid(), i);
         // parallel somehow
         if (i == pnum-1){
-            temp = GetMinMax(array, passed_cells, array_size );
+            temp = GetMinMax(array, i*range, array_size );
             printf("\niteration - %d:min: %d, max: %d", i,temp.min,temp.max);
         }
         else
             {
-                temp = GetMinMax(array, passed_cells, passed_cells + range );
-                passed_cells+=range;
+                temp = GetMinMax(array, i*range, (i+1)*range-1);
                 printf("\niteration - %d:min: %d, max: %d", i,temp.min,temp.max);
             }
 
@@ -161,6 +160,7 @@ int main(int argc, char **argv) {
           }
           else 
           {
+              printf("pipe is working");
               close(p[0]); //close read end
               write(p[1],&temp,sizeof(temp));
           }
@@ -177,8 +177,7 @@ int main(int argc, char **argv) {
 
   while (active_child_processes > 0) {
     // your code here
-        if(getpid()==proc[active_child_processes])
-        exit(0);
+    wait(NULL);
     active_child_processes -= 1;
   }
 
@@ -220,9 +219,9 @@ int main(int argc, char **argv) {
   elapsed_time += (finish_time.tv_usec - start_time.tv_usec) / 1000.0;
 
   free(array);
-    free(proc);
-  printf("Min: %d\n", min_max.min);
-  printf("Max: %d\n", min_max.max);
+
+  printf("\n(%d) is saying: Min: %d\n",getpid(), min_max.min);
+  printf("(%d) is saying: Max: %d\n",getpid(), min_max.max);
   printf("Elapsed time: %fms\n", elapsed_time);
   fflush(NULL);
   return 0;
