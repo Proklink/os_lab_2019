@@ -88,18 +88,25 @@ int main(int argc, char **argv) {
   GenerateArray(array, array_size, seed);
   int active_child_processes = 0;
   
-  for(int i=0;i<array_size;i++)
-  {
-      printf("\n%d ",getpid());
-      printf("%d ", array[i]);
-  }
+  //for(int i=0;i<array_size;i++)
+  //{
+   //   printf("\n%d ",getpid());
+   //   printf("%d ", array[i]);
+  //}
 
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
+    FILE* pf;
     int* p = (int*)calloc(2,sizeof(int));
     if(with_files)
-    {}
+    {
+        if((pf=fopen("PIPE.txt","w"))==NULL)
+        {
+            printf("\nopenning file failed");
+            return 1;
+        }
+    }
     else
     {
         if(pipe(p)<0)
@@ -116,29 +123,33 @@ int main(int argc, char **argv) {
       active_child_processes += 1;
       if (child_pid == 0) {
           struct MinMax temp;
-          printf("\niteration: %d, (%d) appeared, parent: %d", i, getpid(), getppid());
+          //printf("\niteration: %d, (%d) appeared, parent: %d", i, getpid(), getppid());
         // child process
         if (i != pnum-1){
             temp = GetMinMax(array, i*range, (i+1)*range - 1);
-            printf("\nMin %d, Max %d",temp.min,temp.max);
+            //printf("\nMin %d, Max %d",temp.min,temp.max);
         }
         else{
             temp = GetMinMax(array, i*range, array_size-1);
-            printf("\nMin %d, Max %d",temp.min,temp.max);
+            //printf("\nMin %d, Max %d",temp.min,temp.max);
         }
         // parallel somehow
 
         if (with_files) {
           // use files here
+          //printf("\nfile is working");
+          fprintf(pf, "%d ",temp.min);
+            fprintf(pf, "%d\n",temp.max);
+            fclose(pf);
         } else {
           // use pipe here
-            printf("\npipe is working");
+            //printf("\npipe is working");
             close(p[0]); //close read end
             write(p[1],&temp.max,sizeof(int));
             write(p[1],&temp.min,sizeof(int));
             close(p[1]);
         }
-        printf("\n(%d) is dying\n",getpid());
+        //printf("\n(%d) is dying\n",getpid());
         return 0;
       }
 
@@ -147,6 +158,16 @@ int main(int argc, char **argv) {
       return 1;
     }
   }
+    if (with_files){
+        fclose(pf);
+        if((pf=fopen("PIPE.txt","r"))==NULL)
+        {
+             
+            printf("\nopenning file failed");
+            return 1;
+        
+        }
+    }
 
   while (active_child_processes > 0) {
     // your code here
@@ -164,6 +185,8 @@ int main(int argc, char **argv) {
 
     if (with_files) {
       // read from files
+      fscanf(pf, "%d ",&min);
+        fscanf(pf, "%d\n",&max);
     } else {
       // read from pipes
       close(p[1]);
@@ -184,9 +207,10 @@ int main(int argc, char **argv) {
   double elapsed_time = (finish_time.tv_sec - start_time.tv_sec) * 1000.0;
   elapsed_time += (finish_time.tv_usec - start_time.tv_usec) / 1000.0;
 
+fclose(pf);
   free(array);
     free(p);
-  printf("Min: %d\n", min_max.min);
+  printf("\nMin: %d\n", min_max.min);
   printf("Max: %d\n", min_max.max);
   printf("Elapsed time: %fms\n", elapsed_time);
   fflush(NULL);

@@ -24,6 +24,5 @@ while(begin <= end)
         ++begin;
     }
 
-  printf("\nGetMinMax worked");
   return min_max;
 }
