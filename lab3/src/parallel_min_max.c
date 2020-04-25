@@ -16,9 +16,9 @@
 #include "utils.h"
 
 int main(int argc, char **argv) {
-  int seed = 2;
-  int array_size = 10;
-  int pnum = 2;
+  int seed = -1;
+  int array_size = -1;
+  int pnum =-1;
   bool with_files = false;
 
   while (true) {
