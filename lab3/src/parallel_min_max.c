@@ -16,9 +16,9 @@
 #include "utils.h"
 
 int main(int argc, char **argv) {
-  int seed = -1;
-  int array_size = -1;
-  int pnum = -1;
+  int seed = 2;
+  int array_size = 10;
+  int pnum = 2;
   bool with_files = false;
 
   while (true) {
@@ -100,6 +100,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+    
   int *array = malloc(sizeof(int) * array_size);
   GenerateArray(array, array_size, seed);
   int active_child_processes = 0;
@@ -115,6 +116,7 @@ int main(int argc, char **argv) {
 
     FILE* pf;
     int* p = (int*)calloc(2,sizeof(int));
+     
     if(with_files)
     {
         if((pf=fopen("PIPE.txt","w"))==NULL)
@@ -132,8 +134,10 @@ int main(int argc, char **argv) {
     }
 
     int range = array_size/pnum;
+    
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
+    
     if (child_pid >= 0) {
       // successful fork
       active_child_processes += 1;
@@ -150,20 +154,23 @@ int main(int argc, char **argv) {
             //printf("\nMin %d, Max %d",temp.min,temp.max);
         }
         // parallel somehow
-
+        
         if (with_files) {
           // use files here
           //printf("\nfile is working");
+          
           fprintf(pf, "%d ",temp.min);
             fprintf(pf, "%d\n",temp.max);
             fclose(pf);
         } else {
           // use pipe here
             //printf("\npipe is working");
+            
             close(p[0]); //close read end
             write(p[1],&temp.max,sizeof(int));
             write(p[1],&temp.min,sizeof(int));
             close(p[1]);
+            
         }
         //printf("\n(%d) is dying\n",getpid());
         return 0;
@@ -187,6 +194,7 @@ int main(int argc, char **argv) {
 
   while (active_child_processes > 0) {
     // your code here
+    
     wait(NULL);
     active_child_processes -= 1;
   }
@@ -205,6 +213,7 @@ int main(int argc, char **argv) {
         fscanf(pf, "%d\n",&max);
     } else {
       // read from pipes
+      
       close(p[1]);
       read(p[0],&max,sizeof(int));
       read(p[0],&min,sizeof(int));
@@ -219,13 +228,16 @@ int main(int argc, char **argv) {
 
   struct timeval finish_time;
   gettimeofday(&finish_time, NULL);
+  if(with_files)
+    fclose(pf);
 
   double elapsed_time = (finish_time.tv_sec - start_time.tv_sec) * 1000.0;
   elapsed_time += (finish_time.tv_usec - start_time.tv_usec) / 1000.0;
 
-fclose(pf);
+  
   free(array);
     free(p);
+    
   printf("\nMin: %d\n", min_max.min);
   printf("Max: %d\n", min_max.max);
   printf("Elapsed time: %fms\n", elapsed_time);
