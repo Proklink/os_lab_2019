@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 //создание массива
   int *array = malloc(array_size * sizeof(int));
   GenerateArray(array, array_size, seed);//заполнение массива случайными числами
-  struct MinMax min_max = GetMinMax(array, 0, array_size);//получение минмального и максимального элемента массива
+  struct MinMax min_max = GetMinMax(array, 0, array_size-1);//получение минмального и максимального элемента массива
   free(array);//освобождение памяти
 
 //печать результата
