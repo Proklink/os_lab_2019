@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <sys/time.h>
 #include <sys/types.h>
@@ -15,11 +16,19 @@
 #include "find_min_max.h"
 #include "utils.h"
 
+bool kill_flag = false;
+
+void handle_alarm(int sig)
+{
+    kill_flag = true;
+}
+
 int main(int argc, char **argv) {
   int seed = -1;
   int array_size = -1;
   int pnum =-1;
   bool with_files = false;
+  int timeout = -1;
 
   while (true) {
     int current_optind = optind ? optind : 1;
@@ -27,6 +36,7 @@ int main(int argc, char **argv) {
     static struct option options[] = {{"seed", required_argument, 0, 0},
                                       {"array_size", required_argument, 0, 0},
                                       {"pnum", required_argument, 0, 0},
+                                      {"timeout", required_argument, 0, 0},
                                       {"by_files", no_argument, 0, 'f'},
                                       {0, 0, 0, 0}};
 
@@ -70,6 +80,15 @@ int main(int argc, char **argv) {
             }
             break;
           case 3:
+            timeout = atoi(optarg);
+
+             if(timeout <= 0)
+            {
+                printf("timeout must be a positive");
+                return 1;
+            }
+            break;
+          case 4:
             with_files = true;
             break;
 
@@ -94,22 +113,15 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if (seed == -1 || array_size == -1 || pnum == -1) {
+  if (seed == -1 || array_size == -1 || pnum == -1 ) {
     printf("Usage: %s --seed \"num\" --array_size \"num\" --pnum \"num\" \n",
            argv[0]);
     return 1;
   }
-
     
   int *array = malloc(sizeof(int) * array_size);
   GenerateArray(array, array_size, seed);
   int active_child_processes = 0;
-  
-  //for(int i=0;i<array_size;i++)
-  //{
-   //   printf("\n%d ",getpid());
-   //   printf("%d ", array[i]);
-  //}
 
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
@@ -135,6 +147,13 @@ int main(int argc, char **argv) {
 
     int range = array_size/pnum;
     
+    if (timeout != -1){
+        signal( SIGALRM, handle_alarm );
+        alarm( timeout );
+    }
+
+    pid_t children[pnum];
+
   for (int i = 0; i < pnum; i++) {
     pid_t child_pid = fork();
     
@@ -143,28 +162,25 @@ int main(int argc, char **argv) {
       active_child_processes += 1;
       if (child_pid == 0) {
           struct MinMax temp;
-          //printf("\niteration: %d, (%d) appeared, parent: %d", i, getpid(), getppid());
+
         // child process
         if (i != pnum-1){
             temp = GetMinMax(array, i*range, (i+1)*range - 1);
-            //printf("\nMin %d, Max %d",temp.min,temp.max);
+
         }
         else{
             temp = GetMinMax(array, i*range, array_size-1);
-            //printf("\nMin %d, Max %d",temp.min,temp.max);
         }
         // parallel somehow
         
         if (with_files) {
           // use files here
-          //printf("\nfile is working");
           
           fprintf(pf, "%d ",temp.min);
             fprintf(pf, "%d\n",temp.max);
             fclose(pf);
         } else {
           // use pipe here
-            //printf("\npipe is working");
             
             close(p[0]); //close read end
             write(p[1],&temp.max,sizeof(int));
@@ -172,9 +188,11 @@ int main(int argc, char **argv) {
             close(p[1]);
             
         }
-        //printf("\n(%d) is dying\n",getpid());
         return 0;
       }
+      if (child_pid > 0)
+        children[i] = child_pid;
+        
 
     } else {
       printf("Fork failed!\n");
@@ -191,12 +209,20 @@ int main(int argc, char **argv) {
         
         }
     }
-
+    int status;
   while (active_child_processes > 0) {
     // your code here
+    if (kill_flag == true){
+        printf("\nThe child processes is killing...");
+        for (int i =0; i<pnum; i++)
+            kill(children[i], SIGKILL);
+        return 1;
+    }
     
-    wait(NULL);
-    active_child_processes -= 1;
+   if (waitpid(-1, &status, WNOHANG) > 0) { 
+            active_child_processes -= 1;
+        }
+
   }
 
   struct MinMax min_max;
