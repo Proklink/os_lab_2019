@@ -17,11 +17,11 @@ char *cptr = "This message is output by the function showit()\n"; /* Static */
 char buffer1[25];
 int showit(); /* Function prototype */
 
-main() {
+int main() {
   int i = 0; /* Automatic variable */
 
   /* Printing addressing information */
-  printf("\nAddress etext: %8X \n", &etext);
+  printf("\nAddress etext: %8X \n", &etext);//etext - адрес после конца сегмента с кодом программы
   printf("Address edata: %8X \n", &edata);
   printf("Address end  : %8X \n", &end);
 
