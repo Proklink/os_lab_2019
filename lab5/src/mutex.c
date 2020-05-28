@@ -57,15 +57,15 @@ void do_one_thing(int *pnum_times) {
   unsigned long k;
   int work;
   for (i = 0; i < 50; i++) {
-    // pthread_mutex_lock(&mut);
+    //pthread_mutex_lock(&mut);
     printf("doing one thing\n");
     work = *pnum_times;
     printf("counter = %d\n", work);
     work++; /* increment, but not write */
     for (k = 0; k < 500000; k++)
-      ;                 /* long cycle */
+        ;                /* long cycle */
     *pnum_times = work; /* write back */
-	// pthread_mutex_unlock(&mut);
+	//pthread_mutex_unlock(&mut);
   }
 }
 
@@ -74,7 +74,7 @@ void do_another_thing(int *pnum_times) {
   unsigned long k;
   int work;
   for (i = 0; i < 50; i++) {
-    // pthread_mutex_lock(&mut);
+    //pthread_mutex_lock(&mut);
     printf("doing another thing\n");
     work = *pnum_times;
     printf("counter = %d\n", work);
@@ -82,7 +82,7 @@ void do_another_thing(int *pnum_times) {
     for (k = 0; k < 500000; k++)
       ;                 /* long cycle */
     *pnum_times = work; /* write back */
-    // pthread_mutex_unlock(&mut);
+    //pthread_mutex_unlock(&mut);
   }
 }
 
@@ -90,3 +90,12 @@ void do_wrap_up(int counter) {
   int total;
   printf("All done, counter = %d\n", counter);
 }
+/*при запуске без мьютекса потоки наперегонки инкрементируют 
+общую перемунную, но тк циклы выполняются быстро, то оба потока одновременно 
+присвают common одно и то же значение. если количество итераций
+ вложенного цикла в одной из функций увеличить или уменьшить, то
+ один поток будет обгонять другой, а тот поток, который отстает
+ будет продолжать инкрементирование с того числа, на котором закончил
+ предыдущий поток
+ при запуске с мьютексами один поток блокирует общую переменную и не отпускает 
+ пока не завершится. потом проделывает ту же работу другой поток*/
