@@ -66,18 +66,25 @@ int getArguments(int argc, char **argv, int *arg)
     return 0;
 }
 
-int Multy_thread_factorial(int* arg)
+void Multy_thread_factorial(int* arg)
 {
     int n = arg[0];
     int p = arg[1];
     int res = 1;
 	while (n > 1) {
+        pthread_mutex_lock(&mut);
 		res = (res * ((n/p) % 2 ? p-1 : 1)) % p;
-		for (int i=2; i<=n%p; ++i)
+        printf("\nres=%d",res);
+		for (int i=2; i<=n%p; ++i){
 			res = (res * i) % p;
+            printf("\nres=%d",res);
+        }
 		n /= p;
+        printf("\nn=%d",n);
+        pthread_mutex_unlock(&mut);
 	}
-	return res % p;
+    printf("res = %d",res);
+	arg[2] = res % p;
 }
 
 int main(int argc, char **argv) {
@@ -108,6 +115,7 @@ int main(int argc, char **argv) {
  
     pthread_t Threads_mass[pnum];
 
+    printf("\n%d %d %d",arg[0],arg[1],arg[2]);
     for(int i = 0; i < pnum; i++)
         if (pthread_create(Threads_mass + i, NULL, (void *)Multy_thread_factorial,
 			  (void *)arg) != 0) {
@@ -121,7 +129,7 @@ int main(int argc, char **argv) {
             exit(1);
         }
 
-    printf("k = %d, mod = %d, pnum = %d", k,mod,pnum);
+    printf("\n%d!mod(%d) = %d\n", k, mod, arg[2]);
 
     return 0;
 }
