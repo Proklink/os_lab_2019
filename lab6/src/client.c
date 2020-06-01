@@ -48,6 +48,7 @@ bool ConvertStringToUI64(const char *str, uint64_t *val) {
 int main(int argc, char **argv) {
   uint64_t k = -1;
   uint64_t mod = -1;
+  FILE* pf;
   char servers[255] = {'\0'}; // TODO: explain why 255
 
   while (true) {
@@ -84,8 +85,14 @@ int main(int argc, char **argv) {
         }
         break;
       case 2:
-        // TODO: your code here
         memcpy(servers, optarg, strlen(optarg));
+        if((pf=fopen(servers,"r"))==NULL)
+        {
+            printf("\nopenning file failed");
+            return -1;
+        }
+        else
+            fclose(pf);
         break;
       default:
         printf("Index %d is out of options\n", option_index);
@@ -106,12 +113,30 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // TODO: for one server here, rewrite with servers from file
+  if((pf=fopen(servers,"r"))==NULL)
+    {
+        printf("\nopenning file failed");
+        fclose(pf);
+        return -1;
+    }
+  struct Server *to; 
   unsigned int servers_num = 1;
-  struct Server *to = malloc(sizeof(struct Server) * servers_num);
-  // TODO: delete this and parallel work between servers
-  to[0].port = 20001;
-  memcpy(to[0].ip, "127.0.0.1", sizeof("127.0.0.1"));
+  while ( !feof(pf) )  
+  {
+    to = realloc(to, sizeof(struct Server) * servers_num);
+    if ( fscanf(pf, "%s:%d\n",to[0].ip, &(to[0].port)) < 2 )
+    {
+        printf("\nreading from file error");
+        fclose(pf);
+        break;
+    }
+
+    //to[0].port = 20001;
+    //memcpy(to[0].ip, "127.0.0.1", sizeof("127.0.0.1"));
+
+    servers_num++;
+  }
+    fclose(pf);
 
   // TODO: work continuously, rewrite to make parallel
   for (int i = 0; i < servers_num; i++) {
