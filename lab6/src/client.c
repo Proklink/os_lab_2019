@@ -1,15 +1,15 @@
 #include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
 
-#include <errno.h>
-#include <getopt.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <sys/socket.h>
+ #include <errno.h>
+ #include <getopt.h>
+ #include <netdb.h>
+ #include <netinet/in.h>
+ #include <netinet/ip.h>
+ #include <sys/socket.h>
 #include <sys/types.h>
 
 struct Server {
@@ -69,11 +69,19 @@ int main(int argc, char **argv) {
       switch (option_index) {
       case 0:
         ConvertStringToUI64(optarg, &k);
-        // TODO: your code here
+        if (k <= 0)
+        {
+            printf("\nthe argument of the factorial should be positive");
+            return -1;
+        }
         break;
       case 1:
         ConvertStringToUI64(optarg, &mod);
-        // TODO: your code here
+         if (mod <= 0)
+        {
+            printf("\nthe module should be positive");
+            return -1;
+        }
         break;
       case 2:
         // TODO: your code here
@@ -105,7 +113,7 @@ int main(int argc, char **argv) {
   to[0].port = 20001;
   memcpy(to[0].ip, "127.0.0.1", sizeof("127.0.0.1"));
 
-  // TODO: work continiously, rewrite to make parallel
+  // TODO: work continuously, rewrite to make parallel
   for (int i = 0; i < servers_num; i++) {
     struct hostent *hostname = gethostbyname(to[i].ip);
     if (hostname == NULL) {
@@ -154,7 +162,7 @@ int main(int argc, char **argv) {
     // unite results
     uint64_t answer = 0;
     memcpy(&answer, response, sizeof(uint64_t));
-    printf("answer: %llu\n", answer);
+    printf("answer: %llu\n", (unsigned long long)answer);
 
     close(sck);
   }
