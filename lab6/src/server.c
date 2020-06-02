@@ -1,15 +1,15 @@
 #include <limits.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+ #include <stdbool.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h> 
 
-#include <getopt.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <sys/socket.h>
-#include <sys/types.h>
+ #include <getopt.h>
+ #include <netinet/in.h>
+ #include <netinet/ip.h>
+ #include <sys/socket.h>
+ #include <sys/types.h>
 
 #include "pthread.h"
 
@@ -36,6 +36,7 @@ uint64_t Factorial(const struct FactorialArgs *args) {
   uint64_t ans = 1;
 
   // TODO: your code here
+  
 
   return ans;
 }
@@ -91,7 +92,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+  int server_fd = socket(AF_INET, SOCK_STREAM, 0);//серверный сокет 
   if (server_fd < 0) {
     fprintf(stderr, "Can not create server socket!");
     return 1;
@@ -100,17 +101,19 @@ int main(int argc, char **argv) {
   struct sockaddr_in server;
   server.sin_family = AF_INET;
   server.sin_port = htons((uint16_t)port);
-  server.sin_addr.s_addr = htonl(INADDR_ANY);
+  server.sin_addr.s_addr = htonl(INADDR_ANY);//привязка ко всем системным IP-адресам
 
   int opt_val = 1;
-  setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof(opt_val));
+  setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt_val, sizeof(opt_val));//
 
+  //привязка сокета к адресу
   int err = bind(server_fd, (struct sockaddr *)&server, sizeof(server));
   if (err < 0) {
     fprintf(stderr, "Can not bind to socket!");
     return 1;
   }
-
+  
+  //перевод сокета в слушающей режим
   err = listen(server_fd, 128);
   if (err < 0) {
     fprintf(stderr, "Could not listen on socket\n");
@@ -120,77 +123,84 @@ int main(int argc, char **argv) {
   printf("Server listening at %d\n", port);
 
   while (true) {
-    struct sockaddr_in client;
-    socklen_t client_len = sizeof(client);
-    int client_fd = accept(server_fd, (struct sockaddr *)&client, &client_len);
+        struct sockaddr_in client;
+        socklen_t client_len = sizeof(client);
+        //создание передающего сокета
+        int client_fd = accept(server_fd, (struct sockaddr *)&client, &client_len);
 
-    if (client_fd < 0) {
-      fprintf(stderr, "Could not establish new connection\n");
-      continue;
-    }
-
-    while (true) {
-      unsigned int buffer_size = sizeof(uint64_t) * 3;
-      char from_client[buffer_size];
-      int read = recv(client_fd, from_client, buffer_size, 0);
-
-      if (!read)
-        break;
-      if (read < 0) {
-        fprintf(stderr, "Client read failed\n");
-        break;
-      }
-      if (read < buffer_size) {
-        fprintf(stderr, "Client send wrong data format\n");
-        break;
-      }
-
-      pthread_t threads[tnum];
-
-      uint64_t begin = 0;
-      uint64_t end = 0;
-      uint64_t mod = 0;
-      memcpy(&begin, from_client, sizeof(uint64_t));
-      memcpy(&end, from_client + sizeof(uint64_t), sizeof(uint64_t));
-      memcpy(&mod, from_client + 2 * sizeof(uint64_t), sizeof(uint64_t));
-
-      fprintf(stdout, "Receive: %llu %llu %llu\n", 
-      (unsigned long long)begin, (unsigned long long)end, (unsigned long long)mod);
-
-      struct FactorialArgs args[tnum];
-      for (uint32_t i = 0; i < tnum; i++) {
-        // TODO: parallel somehow
-        args[i].begin = 1;
-        args[i].end = 1;
-        args[i].mod = mod;
-
-        if (pthread_create(&threads[i], NULL, ThreadFactorial,
-                           (void *)&args[i])) {
-          printf("Error: pthread_create failed!\n");
-          return 1;
+        if (client_fd < 0) {
+        fprintf(stderr, "Could not establish new connection\n");
+        continue;
         }
-      }
 
-      uint64_t total = 1;
-      for (uint32_t i = 0; i < tnum; i++) {
-        uint64_t result = 0;
-        pthread_join(threads[i], (void **)&result);
-        total = MultModulo(total, result, mod);
-      }
+        while (true) {
+            unsigned int buffer_size = sizeof(uint64_t) * 3;
+            char from_client[buffer_size];//буфер для task(из клиента)
+            int read = recv(client_fd, from_client, buffer_size, 0);//получение данных от клиента
 
-      printf("Total: %llu\n", (unsigned long long)total);
+            if (!read)
+                break;
+            if (read < 0) {
+                fprintf(stderr, "Client read failed\n");
+                break;
+            }
+            if (read < buffer_size) {
+                fprintf(stderr, "Client send wrong data format\n");
+                break;
+            }
 
-      char buffer[sizeof(total)];
-      memcpy(buffer, &total, sizeof(total));
-      err = send(client_fd, buffer, sizeof(total), 0);
-      if (err < 0) {
-        fprintf(stderr, "Can't send data to client\n");
-        break;
-      }
-    }
+            pthread_t threads[tnum];
 
-    shutdown(client_fd, SHUT_RDWR);
-    close(client_fd);
+            uint64_t begin = 0;
+            uint64_t end = 0;
+            uint64_t mod = 0;
+            memcpy(&begin, from_client, sizeof(uint64_t));
+            memcpy(&end, from_client + sizeof(uint64_t), sizeof(uint64_t));
+            memcpy(&mod, from_client + 2 * sizeof(uint64_t), sizeof(uint64_t));
+
+            fprintf(stdout, "Receive: %llu %llu %llu\n", 
+            (unsigned long long)begin, (unsigned long long)end, (unsigned long long)mod);
+
+            //вычисления
+            struct FactorialArgs args[tnum];
+            uint64_t range = (from_client[1] - from_client[0])/tnum;
+            for (uint32_t i = 0; i < tnum; i++) {
+                // TODO: parallel somehow
+
+                args[i].begin = i * range;
+                if (i == tnum - 1)
+                    args[i].end = from_client[1];
+                else 
+                    args[i].end = (i + 1) * range;
+                args[i].mod = mod;
+
+                if (pthread_create(&threads[i], NULL, ThreadFactorial,
+                                (void *)&args[i])) {
+                printf("Error: pthread_create failed!\n");
+                return 1;
+                }
+            }
+
+            uint64_t total = 1;
+            for (uint32_t i = 0; i < tnum; i++) {
+                uint64_t result = 0;
+                pthread_join(threads[i], (void **)&result);
+                total = MultModulo(total, result, mod);
+            }
+
+            printf("Total: %llu\n", (unsigned long long)total);
+
+            char buffer[sizeof(total)];
+            memcpy(buffer, &total, sizeof(total));
+            err = send(client_fd, buffer, sizeof(total), 0);
+            if (err < 0) {
+                fprintf(stderr, "Can't send data to client\n");
+                break;
+            }
+        }
+
+        shutdown(client_fd, SHUT_RDWR);
+        close(client_fd);
   }
 
   return 0;
