@@ -13,6 +13,7 @@
 
 #include "pthread.h"
 
+
 struct FactorialArgs {
   uint64_t begin;
   uint64_t end;
@@ -36,7 +37,15 @@ uint64_t Factorial(const struct FactorialArgs *args) {
   uint64_t ans = 1;
 
   // TODO: your code here
-  
+    uint64_t start = args->begin;
+    uint64_t end = args->end;
+    uint64_t mod = args->mod;
+	for (int i = start; i < end; i++) {
+		if (i % mod == 0)
+	        ans *= i / mod;
+	    else
+	        ans *= i % mod;
+	}
 
   return ans;
 }
