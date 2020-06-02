@@ -113,18 +113,18 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if((pf=fopen(servers,"r"))==NULL)
+  if((pf=fopen(servers,"r"))==NULL)//открываем файл где лежат адреса серверов
     {
         printf("\nopenning file failed");
         fclose(pf);
         return -1;
     }
-  struct Server *to; 
+  struct Server *to; //указатель на массив с адресами
   unsigned int servers_num = 1;
   while ( !feof(pf) )  
   {
-    to = realloc(to, sizeof(struct Server) * servers_num);
-    if ( fscanf(pf, "%s:%d\n",to[0].ip, &(to[0].port)) < 2 )
+    to = realloc(to, sizeof(struct Server) * servers_num);//если не конец файла - 
+    if ( fscanf(pf, "%s:%d\n",to[0].ip, &(to[0].port)) < 2 )//расширить массив и считать данные
     {
         printf("\nreading from file error");
         fclose(pf);
@@ -138,59 +138,84 @@ int main(int argc, char **argv) {
   }
     fclose(pf);
 
+  int range = k/servers_num; // сколько возьмёт каждый сервер
+  int store = 0;
+  uint64_t answer = 1;//конечный ответ
   // TODO: work continuously, rewrite to make parallel
   for (int i = 0; i < servers_num; i++) {
-    struct hostent *hostname = gethostbyname(to[i].ip);
-    if (hostname == NULL) {
-      fprintf(stderr, "gethostbyname failed with %s\n", to[i].ip);
-      exit(1);
-    }
 
-    struct sockaddr_in server;
-    server.sin_family = AF_INET;
-    server.sin_port = htons(to[i].port);
-    server.sin_addr.s_addr = *((unsigned long *)hostname->h_addr);
+        struct hostent *hostname = gethostbyname(to[i].ip);//структура для имени 
+        //хоста и ip-адреса
+        if (hostname == NULL) {
+        fprintf(stderr, "gethostbyname failed with %s\n", to[i].ip);
+        exit(1);
+        }
 
-    int sck = socket(AF_INET, SOCK_STREAM, 0);
-    if (sck < 0) {
-      fprintf(stderr, "Socket creation failed!\n");
-      exit(1);
-    }
+        struct sockaddr_in server; //структура для подключения к серверу
+        server.sin_family = AF_INET; //семейство адресов IPv4
+        server.sin_port = htons(to[i].port);//порт
+        server.sin_addr.s_addr = *((unsigned long *)hostname->h_addr);//адресс
 
-    if (connect(sck, (struct sockaddr *)&server, sizeof(server)) < 0) {
-      fprintf(stderr, "Connection failed\n");
-      exit(1);
-    }
+        int sck = socket(AF_INET, SOCK_STREAM, 0);//создаём клиентский сокет 
+        if (sck < 0) {
+        fprintf(stderr, "Socket creation failed!\n");
+        exit(1);
+        }
 
-    // TODO: for one server
-    // parallel between servers
-    uint64_t begin = 1;
-    uint64_t end = k;
+        //соединяемся с сервером
+        if (connect(sck, (struct sockaddr *)&server, sizeof(server)) < 0) {
+        fprintf(stderr, "Connection failed\n");
+        exit(1);
+        }
 
-    char task[sizeof(uint64_t) * 3];
-    memcpy(task, &begin, sizeof(uint64_t));
-    memcpy(task + sizeof(uint64_t), &end, sizeof(uint64_t));
-    memcpy(task + 2 * sizeof(uint64_t), &mod, sizeof(uint64_t));
+        uint64_t begin;
+        uint64_t end;
+        //раздаём серверам задания
+        if (i == servers_num - 1){
+            begin = i*range;
+            end = k;
+        }
+        else
+        {
+            begin = i*range;
+            end = (i+1)*range;
+        }
 
-    if (send(sck, task, sizeof(task), 0) < 0) {
-      fprintf(stderr, "Send failed\n");
-      exit(1);
-    }
+        //заполняем task характеристиками для вычислений
+        char task[sizeof(uint64_t) * 3];
+        memcpy(task, &begin, sizeof(uint64_t));
+        memcpy(task + sizeof(uint64_t), &end, sizeof(uint64_t));
+        memcpy(task + 2 * sizeof(uint64_t), &mod, sizeof(uint64_t));
 
-    char response[sizeof(uint64_t)];
-    if (recv(sck, response, sizeof(response), 0) < 0) {
-      fprintf(stderr, "Recieve failed\n");
-      exit(1);
-    }
+        //отправляем серверу task
+        if (send(sck, task, sizeof(task), 0) < 0) {
+        fprintf(stderr, "Send failed\n");
+        exit(1);
+        }
 
-    // TODO: from one server
-    // unite results
-    uint64_t answer = 0;
-    memcpy(&answer, response, sizeof(uint64_t));
-    printf("answer: %llu\n", (unsigned long long)answer);
+        //ждём и получаем ответ
+        char response[sizeof(uint64_t)];
+        if (recv(sck, response, sizeof(response), 0) < 0) {
+        fprintf(stderr, "Recieve failed\n");
+        exit(1);
+        }
 
-    close(sck);
+        // TODO: from one server
+        // unite results
+        //memcpy(&answer, response, sizeof(uint64_t));
+        uint64_t temp;
+        if (ConvertStringToUI64(response, &temp) == false)
+        {
+            printf("\nError converting string to uint64_t");
+            exit(1);
+        }
+        
+        answer*=temp;
+        close(sck);
+
   }
+
+  printf("answer: %llu\n", (unsigned long long)answer%mod);
   free(to);
 
   return 0;
