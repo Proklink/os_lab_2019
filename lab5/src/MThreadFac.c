@@ -76,7 +76,7 @@ void Multy_thread_factorial(int* arg)
 		if (n % p == 0)
 	        res *= n/p;
 	    else
-	        res *= n;
+	        res *= n%p;
 	    n--;
         pthread_mutex_unlock(&mut);
 	}
