@@ -106,9 +106,11 @@ int main(int argc, char **argv) {
     for(int i = 0; i < threads_num; i++)
     {
         args[i].array = array;
-        args[i].begin = i*array_size/threads_num;
+        args[i].begin = i * array_size/threads_num;
         if (i == threads_num - 1 )
             args[i].end = array_size;
+        else
+            args[i].end = (i + 1) * array_size/threads_num;
         
     }
 
