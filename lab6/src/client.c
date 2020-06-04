@@ -113,24 +113,40 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+
   if((pf=fopen(servers,"r"))==NULL)//открываем файл где лежат адреса серверов
     {
         printf("\nopenning file failed");
         fclose(pf);
         return -1;
     }
-  struct Server *to; //указатель на массив с адресами
-  unsigned int servers_num = 1;
+
+  unsigned int servers_num = 1;  
+  struct Server *to = malloc(sizeof(struct Server) * servers_num); //указатель на массив с адресами
   while ( !feof(pf) )  
   {
-    to = realloc(to, sizeof(struct Server) * servers_num);//если не конец файла - 
-    if ( fscanf(pf, "%s:%d\n",to[0].ip, &(to[0].port)) < 2 )//расширить массив и считать данные
+    int num;
+    char buf[64];
+    char *twoPoints;
+    //to = realloc(to, sizeof(struct Server) * servers_num);//если не конец файла - 
+    if ( (num = fscanf(pf, "%s\n",buf)) < 1 )//расширить массив и считать данные
     {
-        printf("\nreading from file error");
+        printf("\nreading from file error, num = %d",num);
         fclose(pf);
-        break;
+        exit(1);
     }
-
+    if( (twoPoints = strchr(buf,':')) == NULL )
+    {
+        printf("incorrect address entry for the server");
+        fclose(pf);
+        exit(1);
+    }
+    memcpy(to[0].ip, buf, twoPoints - buf - 1);
+    memcpy(buf, twoPoints, strlen(buf) - (twoPoints - buf) );
+    printf("\n to[0].ip = %s, to[0].port = %d",to[0].ip, to[0].port);
+    
+    
+    
     //to[0].port = 20001;
     //memcpy(to[0].ip, "127.0.0.1", sizeof("127.0.0.1"));
 
@@ -154,7 +170,7 @@ int main(int argc, char **argv) {
         struct sockaddr_in server; //структура для подключения к серверу
         server.sin_family = AF_INET; //семейство адресов IPv4
         server.sin_port = htons(to[i].port);//порт
-        server.sin_addr.s_addr = *((unsigned long *)hostname->h_addr);//адресс
+        server.sin_addr.s_addr = *((unsigned long *)hostname->h_addr_list[0]);//адресс
 
         int sck = socket(AF_INET, SOCK_STREAM, 0);//создаём клиентский сокет 
         if (sck < 0) {
