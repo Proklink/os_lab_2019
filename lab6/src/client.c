@@ -121,36 +121,41 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-  unsigned int servers_num = 1;  
-  struct Server *to = malloc(sizeof(struct Server) * servers_num); //указатель на массив с адресами
+
+  unsigned int servers_num = 0;  
+  //указатель на массив с адресами
+  struct Server *to = malloc(sizeof(struct Server) * servers_num); 
+  char ch;
   while ( !feof(pf) )  
   {
+      
     int num;
-    char buf[64];
+    char buf[64], port[16];
     char *twoPoints;
-    //to = realloc(to, sizeof(struct Server) * servers_num);//если не конец файла - 
-    if ( (num = fscanf(pf, "%s\n",buf)) < 1 )//расширить массив и считать данные
+    //если не конец файла -расширить массив и считать данные
+     
+    if ( (num = fscanf(pf, "%s\n",buf)) < 1 )
     {
         printf("\nreading from file error, num = %d",num);
         fclose(pf);
         exit(1);
     }
+    to = realloc(to, sizeof(struct Server) * (++servers_num));
     if( (twoPoints = strchr(buf,':')) == NULL )
     {
         printf("incorrect address entry for the server");
         fclose(pf);
         exit(1);
     }
-    memcpy(to[0].ip, buf, twoPoints - buf - 1);
-    memcpy(buf, twoPoints, strlen(buf) - (twoPoints - buf) );
-    printf("\n to[0].ip = %s, to[0].port = %d",to[0].ip, to[0].port);
-    
-    
-    
+    memcpy(to[servers_num].ip, buf, twoPoints - buf);
+    memcpy(port, twoPoints + 1, strlen(buf) - (twoPoints - buf) );
+    to[servers_num].port = atoi(port);
+    printf("\n to.ip = %s, to.port = %d\n",to[servers_num].ip, to[servers_num].port);
+    printf("\nss%lu",sizeof(to[servers_num]));
+
     //to[0].port = 20001;
     //memcpy(to[0].ip, "127.0.0.1", sizeof("127.0.0.1"));
 
-    servers_num++;
   }
     fclose(pf);
 
