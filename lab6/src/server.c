@@ -40,15 +40,17 @@ uint64_t Factorial(const struct FactorialArgs *args) {
     uint64_t start = args->begin;
     uint64_t end = args->end;
     uint64_t mod = args->mod;
+    //pthread_mutex_lock(&mut);
 	for (int i = start; i <= end; i++) {
-        pthread_mutex_lock(&mut);
+        
         printf("\n%d",i);
 		if (i % mod == 0)
 	        ans *= i / mod;
 	    else
 	        ans *= i % mod;
-        pthread_mutex_unlock(&mut);
+        
 	}
+    //pthread_mutex_unlock(&mut);
     printf("\nF:ans = %llu\n", (unsigned long long)ans);
   return ans;
 }
@@ -179,14 +181,17 @@ int main(int argc, char **argv) {
             for (uint32_t i = 0; i < tnum; i++) {
                 // TODO: parallel somehow
 
-                if(i == 0)
-                    args[i].begin = begin;
+                //if(i == 0)
+               //     args[i].begin = begin;
+               // else
+                if ( (i != 0) )
+                    args[i].begin =begin + i * range + 1;
                 else
-                    args[i].begin = i * range;
+                    args[i].begin =begin + i * range;
                 if (i == tnum - 1)
                     args[i].end = end;
                 else 
-                    args[i].end = (i + 1) * range;
+                    args[i].end =begin + (i + 1) * range;
                 args[i].mod = mod;
                 //printf("\n range = %llu, begin = %llu, end = %llu, mod = %llu", (unsigned long long)args[i].mod, (unsigned long long)args[i].begin, (unsigned long long)args[i].end, (unsigned long long)args[i].mod);
 

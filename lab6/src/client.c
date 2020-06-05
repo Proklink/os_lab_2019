@@ -204,10 +204,10 @@ int main(int argc, char **argv) {
          //раздаём серверам задания
         uint64_t begin;
         uint64_t end;
-        if (i == 0)
-            begin = 1;
-        else    
-            begin = i*range;
+        //if (i == 0)
+          //  begin = 1;
+        //else    
+            begin = i*range+1;
         if (i == servers_num - 1){
             end = k;
         } else {
