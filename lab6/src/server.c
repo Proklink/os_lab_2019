@@ -13,7 +13,7 @@
 
 #include "pthread.h"
 
-
+pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
 struct FactorialArgs {
   uint64_t begin;
   uint64_t end;
@@ -40,13 +40,16 @@ uint64_t Factorial(const struct FactorialArgs *args) {
     uint64_t start = args->begin;
     uint64_t end = args->end;
     uint64_t mod = args->mod;
-	for (int i = start; i < end; i++) {
+	for (int i = start; i <= end; i++) {
+        pthread_mutex_lock(&mut);
+        printf("\n%d",i);
 		if (i % mod == 0)
 	        ans *= i / mod;
 	    else
 	        ans *= i % mod;
+        pthread_mutex_unlock(&mut);
 	}
-
+    printf("\nF:ans = %llu\n", (unsigned long long)ans);
   return ans;
 }
 
@@ -172,16 +175,20 @@ int main(int argc, char **argv) {
 
             //вычисления
             struct FactorialArgs args[tnum];
-            uint64_t range = (from_client[1] - from_client[0])/tnum;
+            uint64_t range = (end - begin)/tnum;
             for (uint32_t i = 0; i < tnum; i++) {
                 // TODO: parallel somehow
 
-                args[i].begin = i * range;
+                if(i == 0)
+                    args[i].begin = begin;
+                else
+                    args[i].begin = i * range;
                 if (i == tnum - 1)
-                    args[i].end = from_client[1];
+                    args[i].end = end;
                 else 
                     args[i].end = (i + 1) * range;
                 args[i].mod = mod;
+                //printf("\n range = %llu, begin = %llu, end = %llu, mod = %llu", (unsigned long long)args[i].mod, (unsigned long long)args[i].begin, (unsigned long long)args[i].end, (unsigned long long)args[i].mod);
 
                 if (pthread_create(&threads[i], NULL, ThreadFactorial,
                                 (void *)&args[i])) {
@@ -195,12 +202,14 @@ int main(int argc, char **argv) {
                 uint64_t result = 0;
                 pthread_join(threads[i], (void **)&result);
                 total = MultModulo(total, result, mod);
+                //total *=result;
             }
 
             printf("Total: %llu\n", (unsigned long long)total);
 
             char buffer[sizeof(total)];
-            memcpy(buffer, &total, sizeof(total));
+            //memcpy(buffer, &total, sizeof(total));
+            sprintf(buffer, "%llu", (unsigned long long)total);
             err = send(client_fd, buffer, sizeof(total), 0);
             if (err < 0) {
                 fprintf(stderr, "Can't send data to client\n");
