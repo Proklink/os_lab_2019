@@ -1,4 +1,4 @@
 #!/bin/bash
 
-gcc -o client -lpthread -std=c99 client.c
-./client  --k 10 --mod 7 --servers servers
+gcc -o MPClient -lpthread -std=c99 MPClient.c
+./MPClient  --k 10 --mod 7 --servers servers
