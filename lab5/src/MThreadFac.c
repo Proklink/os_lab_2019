@@ -71,6 +71,7 @@ void Multy_thread_factorial(int* arg)
     int n = arg[0];
     int p = arg[1];
     int res = 1;
+    printf("\nF:%d %d %d",n,p,res);
 	while (n > 1) {
         pthread_mutex_lock(&mut);
 		if (n % p == 0)
@@ -80,7 +81,7 @@ void Multy_thread_factorial(int* arg)
 	    n--;
         pthread_mutex_unlock(&mut);
 	}
-
+    printf("\n%d %d %d",n,p,res);
 	arg[2] = res % p;
 }
 
