@@ -19,6 +19,12 @@ struct Server {
   int port;
 };
 
+//структура для объединения аргументов для потока в один пакет
+struct ArgForTreadConnect {
+    char task[sizeof(uint64_t) * 3];
+    struct Server *to;
+}; 
+
 uint64_t MultModulo(uint64_t a, uint64_t b, uint64_t mod) {
   uint64_t result = 0;
   a = a % mod;
@@ -49,22 +55,22 @@ bool ConvertStringToUI64(const char *str, uint64_t *val) {
   return true;
 }
 
-uint64_t ThreadConnect(void *to, void *task)
+uint64_t ThreadConnect(void *ARGS)
 {
-    struct Server *fto = (struct Server *)to;
-    char *ftask = (char *)task;
+    struct ArgForTreadConnect *arg = (struct ArgForTreadConnect *)ARGS;
     uint64_t ans;
+    
 
-        struct hostent *hostname = gethostbyname(fto->ip);//структура для имени 
+        struct hostent *hostname = gethostbyname(arg->to->ip);//структура для имени 
         //хоста и ip-адреса
         if (hostname == NULL) {
-        fprintf(stderr, "gethostbyname failed with %s\n", fto->ip);
+        fprintf(stderr, "gethostbyname failed with %s\n", arg->to->ip);
         exit(1);
         }
 
         struct sockaddr_in server; //структура для подключения к серверу
         server.sin_family = AF_INET; //семейство адресов IPv4
-        server.sin_port = htons(fto->port);//порт
+        server.sin_port = htons(arg->to->port);//порт
         server.sin_addr.s_addr = *((unsigned long *)hostname->h_addr_list[0]);//адресс
 
         int sck = socket(AF_INET, SOCK_STREAM, 0);//создаём клиентский сокет 
@@ -80,7 +86,7 @@ uint64_t ThreadConnect(void *to, void *task)
         }
 
         //отправляем серверу task
-        if (send(sck, ftask, sizeof(ftask), 0) < 0) {
+        if (send(sck, arg->task, sizeof(arg->task), 0) < 0) {
         fprintf(stderr, "Send failed\n");
         exit(1);
         }
@@ -108,11 +114,12 @@ uint64_t ThreadConnect(void *to, void *task)
 }
 
 int main(int argc, char **argv) {
+
   uint64_t k = -1;
   uint64_t mod = -1;
   unsigned int servers_num = 0; 
   FILE* pf;
-  char servers[255] = {'\0'}; // TODO: explain why 255
+  char servers[255] = {'\0'}; 
 
   while (true) {
     int current_optind = optind ? optind : 1;
@@ -232,11 +239,12 @@ int main(int argc, char **argv) {
   }
     fclose(pf);
 
+  char task[sizeof(uint64_t) * 3];//массив параметров для вычисления части факториала сервером
   int range = k/servers_num; // сколько возьмёт каждый сервер
   uint64_t answer = 1;//конечный ответ
   // TODO: work continuously, rewrite to make parallel
   pthread_t Threads[servers_num];
-  char task[sizeof(uint64_t) * 3];
+  struct ArgForTreadConnect ARGS[servers_num];
   for (int i = 0; i < servers_num; i++) {
 
          //раздаём серверам задания
@@ -254,12 +262,17 @@ int main(int argc, char **argv) {
         memcpy(task, &begin, sizeof(uint64_t));
         memcpy(task + sizeof(uint64_t), &end, sizeof(uint64_t));
         memcpy(task + 2 * sizeof(uint64_t), &mod, sizeof(uint64_t));
+        
+        //создаем пакет аргументов для отдельной работы нового потока
+        ARGS[i].to = &(to[i]);
+        memcpy(ARGS[i].task, task, sizeof(task));
 
         if (pthread_create(&Threads[i], NULL, (void *)ThreadConnect,
-                    (void *)&to[i]), (void *)task) {
+                    (void *)&ARGS[i])) {
             printf("Error: pthread_create failed!\n");
             return 1;
             }
+
   }
 
   for (int i = 0; i < servers_num; i++) {
