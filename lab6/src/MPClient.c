@@ -107,7 +107,7 @@ uint64_t ThreadConnect(void *ARGS)
             printf("\nError converting string to uint64_t");
             exit(1);
         }
-        printf("\nans: %llu",(unsigned long long)ans);
+        //printf("\nans: %llu",(unsigned long long)ans);
         close(sck);
 
     return ans;
