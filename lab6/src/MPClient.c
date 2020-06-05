@@ -3,7 +3,7 @@
  #include <stdlib.h>
  #include <string.h>
  #include <unistd.h>
-
+ #include "pthread.h"
  #include <errno.h>
  #include <getopt.h>
  #include <netdb.h>
@@ -11,6 +11,8 @@
  #include <netinet/ip.h>
  #include <sys/socket.h>
 #include <sys/types.h>
+
+
 
 struct Server {
   char ip[255];
@@ -45,6 +47,64 @@ bool ConvertStringToUI64(const char *str, uint64_t *val) {
  //printf("\ni = %llu",i);
   *val = i;
   return true;
+}
+
+uint64_t ThreadConnect(void *to, void *task)
+{
+    struct Server *fto = (struct Server *)to;
+    char *ftask = (char *)task;
+    uint64_t ans;
+
+        struct hostent *hostname = gethostbyname(fto->ip);//структура для имени 
+        //хоста и ip-адреса
+        if (hostname == NULL) {
+        fprintf(stderr, "gethostbyname failed with %s\n", fto->ip);
+        exit(1);
+        }
+
+        struct sockaddr_in server; //структура для подключения к серверу
+        server.sin_family = AF_INET; //семейство адресов IPv4
+        server.sin_port = htons(fto->port);//порт
+        server.sin_addr.s_addr = *((unsigned long *)hostname->h_addr_list[0]);//адресс
+
+        int sck = socket(AF_INET, SOCK_STREAM, 0);//создаём клиентский сокет 
+        if (sck < 0) {
+        fprintf(stderr, "Socket creation failed!\n");
+        exit(1);
+        }
+
+        //соединяемся с сервером
+        if (connect(sck, (struct sockaddr *)&server, sizeof(server)) < 0) {
+        fprintf(stderr, "Connection failed\n");
+        exit(1);
+        }
+
+        //отправляем серверу task
+        if (send(sck, ftask, sizeof(ftask), 0) < 0) {
+        fprintf(stderr, "Send failed\n");
+        exit(1);
+        }
+
+        //ждём и получаем ответ
+        char response[sizeof(uint64_t)];
+        if (recv(sck, response, sizeof(response), 0) < 0) {
+        fprintf(stderr, "Recieve failed\n");
+        exit(1);
+        }
+        //printf("\nresponse = %s",response);
+
+        // TODO: from one server
+        // unite results
+        //memcpy(&answer, response, sizeof(uint64_t));
+        if (ConvertStringToUI64(response, &ans) == false)
+        {
+            printf("\nError converting string to uint64_t");
+            exit(1);
+        }
+        printf("\nans: %llu",(unsigned long long)ans);
+        close(sck);
+
+    return ans;
 }
 
 int main(int argc, char **argv) {
@@ -175,31 +235,9 @@ int main(int argc, char **argv) {
   int range = k/servers_num; // сколько возьмёт каждый сервер
   uint64_t answer = 1;//конечный ответ
   // TODO: work continuously, rewrite to make parallel
+  pthread_t Threads[servers_num];
+  char task[sizeof(uint64_t) * 3];
   for (int i = 0; i < servers_num; i++) {
-
-        struct hostent *hostname = gethostbyname(to[i].ip);//структура для имени 
-        //хоста и ip-адреса
-        if (hostname == NULL) {
-        fprintf(stderr, "gethostbyname failed with %s\n", to[i].ip);
-        exit(1);
-        }
-
-        struct sockaddr_in server; //структура для подключения к серверу
-        server.sin_family = AF_INET; //семейство адресов IPv4
-        server.sin_port = htons(to[i].port);//порт
-        server.sin_addr.s_addr = *((unsigned long *)hostname->h_addr_list[0]);//адресс
-
-        int sck = socket(AF_INET, SOCK_STREAM, 0);//создаём клиентский сокет 
-        if (sck < 0) {
-        fprintf(stderr, "Socket creation failed!\n");
-        exit(1);
-        }
-
-        //соединяемся с сервером
-        if (connect(sck, (struct sockaddr *)&server, sizeof(server)) < 0) {
-        fprintf(stderr, "Connection failed\n");
-        exit(1);
-        }
 
          //раздаём серверам задания
         uint64_t begin;
@@ -213,40 +251,23 @@ int main(int argc, char **argv) {
         //printf("\ni = %d, begin = %ull, end = %ull",i,(unsigned int)begin,(unsigned int)end);
 
         //заполняем task характеристиками для вычислений
-        char task[sizeof(uint64_t) * 3];
         memcpy(task, &begin, sizeof(uint64_t));
         memcpy(task + sizeof(uint64_t), &end, sizeof(uint64_t));
         memcpy(task + 2 * sizeof(uint64_t), &mod, sizeof(uint64_t));
 
-        //отправляем серверу task
-        if (send(sck, task, sizeof(task), 0) < 0) {
-        fprintf(stderr, "Send failed\n");
-        exit(1);
-        }
-
-        //ждём и получаем ответ
-        char response[sizeof(uint64_t)];
-        if (recv(sck, response, sizeof(response), 0) < 0) {
-        fprintf(stderr, "Recieve failed\n");
-        exit(1);
-        }
-        //printf("\nresponse = %s",response);
-
-        // TODO: from one server
-        // unite results
-        //memcpy(&answer, response, sizeof(uint64_t));
-        uint64_t temp;
-        if (ConvertStringToUI64(response, &temp) == false)
-        {
-            printf("\nError converting string to uint64_t");
-            exit(1);
-        }
-        printf("\ntemp: %llu",(unsigned long long)temp);
-        answer*=temp;
-        close(sck);
-
+        if (pthread_create(&Threads[i], NULL, (void *)ThreadConnect,
+                    (void *)&to[i]), (void *)task) {
+            printf("Error: pthread_create failed!\n");
+            return 1;
+            }
   }
 
+  for (int i = 0; i < servers_num; i++) {
+        uint64_t result = 0;
+        pthread_join(Threads[i], (void **)&result);
+        answer*=result;
+  }
+    
   printf("\nanswer: %llu\n", (unsigned long long)answer%mod);
   free(to);
 

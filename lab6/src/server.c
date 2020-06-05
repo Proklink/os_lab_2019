@@ -13,7 +13,7 @@
 
 #include "pthread.h"
 
-pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
+
 struct FactorialArgs {
   uint64_t begin;
   uint64_t end;
@@ -40,7 +40,7 @@ uint64_t Factorial(const struct FactorialArgs *args) {
     uint64_t start = args->begin;
     uint64_t end = args->end;
     uint64_t mod = args->mod;
-    //pthread_mutex_lock(&mut);
+    
 	for (int i = start; i <= end; i++) {
         
         printf("\n%d",i);
@@ -50,7 +50,7 @@ uint64_t Factorial(const struct FactorialArgs *args) {
 	        ans *= i % mod;
         
 	}
-    //pthread_mutex_unlock(&mut);
+    
     printf("\nF:ans = %llu\n", (unsigned long long)ans);
   return ans;
 }
