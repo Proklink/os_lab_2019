@@ -9,7 +9,7 @@
  #include <sys/types.h>
 #include <unistd.h>
 
-#define BUFSIZE 100
+//#define BUFSIZE 100
 #define SADDR struct sockaddr
 #define SIZE sizeof(struct sockaddr_in)
 
@@ -18,7 +18,7 @@ static struct option options[] = {{"bufsize",  required_argument, 0, 0},
                                  {"addr",      required_argument, 0, 0},
                                  {0, 0,                          0, 0}};
 
-int getArguments(int argc, char **argv, int *arg, char* addr)
+int getArguments(int argc, char **argv, int *arg, char** addr)
 {
 
      while (true) {
@@ -51,12 +51,8 @@ int getArguments(int argc, char **argv, int *arg, char* addr)
 
                     case 2: {
                         //arg[2] = atoi(optarg);
-                        if (inet_aton(optarg, &inp) == 0) {
-                            printf("IP-address is incorrect. Adderess = %s\n", optarg);
-                            return -1;
-                        }
-                        addr = (char *)malloc(strlen(optarg) * sizeof(char));
-                        memcpy(addr, optarg, strlen(optarg) * sizeof(char));
+                        *addr = (char *)malloc(strlen(optarg) * sizeof(char));
+                        memcpy(*addr, optarg, strlen(optarg) * sizeof(char));
                         break;
                     }
                 }
@@ -77,19 +73,21 @@ int getArguments(int argc, char **argv, int *arg, char* addr)
 int main(int argc, char *argv[]) {
   int fd;
   int nread;
-  char buf[BUFSIZE];
-  char* addr = NULL;
-  int arg[2];
+  
+  char* addr = NULL;//IP-address
+  int arg[2];//arg[0] - bufsize, arg[1] - port
   struct sockaddr_in servaddr;
-  if (argc < 3) {
+  if (argc < 4) {
     printf("Too few arguments \n");
     exit(1);
   }
 
-  if (getArguments(argc, argv, arg, addr))
+  if (getArguments(argc, argv, arg, &addr))
         return -1;
 
-    printf("\narguments: bufsize = %d, port = %d, address = %s", arg[0],arg[1],addr);
+    char buf[arg[0]];
+
+    printf("\narguments: bufsize = %d, port = %d, address = %s\n", arg[0],arg[1],addr);
 
   if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("socket creating");
@@ -99,12 +97,12 @@ int main(int argc, char *argv[]) {
   memset(&servaddr, 0, SIZE);
   servaddr.sin_family = AF_INET;
 
-  if (inet_pton(AF_INET, argv[1], &servaddr.sin_addr) <= 0) {
+  if (inet_pton(AF_INET, addr, &servaddr.sin_addr) <= 0) {
     perror("bad address");
     exit(1);
   }
 
-  servaddr.sin_port = htons(atoi(argv[2]));
+  servaddr.sin_port = htons(arg[1]);
 
   if (connect(fd, (SADDR *)&servaddr, SIZE) < 0) {
     perror("connect");
@@ -112,7 +110,7 @@ int main(int argc, char *argv[]) {
   }
 
   write(1, "Input message to send\n", 22);
-  while ((nread = read(0, buf, BUFSIZE)) > 0) {
+  while ((nread = read(0, buf, arg[0])) > 0) {
     if (write(fd, buf, nread) < 0) {
       perror("write");
       exit(1);
