@@ -112,7 +112,13 @@ int main(int argc, char *argv[]) {
     printf("connection established\n");
 
     while ((nread = read(cfd, buf, arg[0])) > 0) {
+        int err;
       write(1, &buf, nread);
+      err = send(cfd, "Messadge is recieved", 20, 0);
+            if (err < 0) {
+                fprintf(stderr, "Can't send data to client\n");
+                break;
+            }
     }
 
     if (nread == -1) {

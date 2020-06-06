@@ -115,6 +115,12 @@ int main(int argc, char *argv[]) {
       perror("write");
       exit(1);
     }
+    char response[64];
+        if (recv(fd, response, sizeof(response), 0) < 0) {
+        fprintf(stderr, "Recieve failed\n");
+        exit(1);
+        }
+        write(1, response, sizeof(response));
   }
 
   close(fd);

@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
   struct sockaddr_in servaddr;
   struct sockaddr_in cliaddr;
 
-  if (argc != 2) {
+  if (argc < 4) {//изменить
     printf("usage: client <IPaddress of server>\n");
     exit(1);
   }
